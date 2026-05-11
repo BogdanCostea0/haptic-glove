@@ -1,0 +1,25 @@
+# Paper — not pushed yet
+paper/
+
+# PlatformIO build artifacts
+firmware/.pio/
+firmware/.vscode/
+
+# Python
+visualizer/__pycache__/
+visualizer/*.pyc
+**/__pycache__/
+*.pyc
+
+# Unity generated folders (if added later)
+unity/Library/
+unity/Temp/
+unity/Logs/
+unity/obj/
+unity/Builds/
+unity/*.sln
+unity/*.csproj
+
+# OS
+.DS_Store
+Thumbs.db
