@@ -20,6 +20,11 @@ unity/Builds/
 unity/*.sln
 unity/*.csproj
 
+# ROS 2 workspace build outputs (generated when colcon build is run)
+build/
+install/
+log/
+
 # OS
 .DS_Store
 Thumbs.db
