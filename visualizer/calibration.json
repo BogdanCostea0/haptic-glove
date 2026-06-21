@@ -1,18 +1,18 @@
 {
   "index": {
-    "flat": 0.0,
-    "bent": 180.0
+    "flat_v": 1.7685,
+    "bent_v": 1.4414
   },
   "middle": {
-    "flat": 180.0,
-    "bent": 180.0
+    "flat_v": 1.9704,
+    "bent_v": 1.5885
   },
   "ring": {
-    "flat": 180.0,
-    "bent": 180.0
+    "flat_v": 1.6572,
+    "bent_v": 1.2818
   },
-  "pinky": {
-    "flat": 180.0,
-    "bent": 180.0
+  "thumb": {
+    "flat_v": 1.9809,
+    "bent_v": 1.8336
   }
 }

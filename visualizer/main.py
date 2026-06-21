@@ -8,6 +8,7 @@ Usage:
 Controls:
     R      – reset orientation reference (zeros the current IMU pose)
     F      – toggle XYZ axis display
+    H      – send haptic test buzz (effect 1)
     ESC    – quit
 """
 
@@ -19,7 +20,7 @@ import os
 
 import pygame
 from pygame.locals import (DOUBLEBUF, OPENGL, QUIT,
-                            KEYDOWN, K_ESCAPE, K_r, K_f)
+                            KEYDOWN, K_ESCAPE, K_r, K_f, K_h)
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
@@ -35,7 +36,8 @@ FINGER_BAR_COLORS = [
     (0.30, 0.70, 1.00),   # index  – blue
     (0.30, 1.00, 0.55),   # middle – green
     (1.00, 0.70, 0.25),   # ring   – orange
-    (1.00, 0.38, 0.38),   # pinky  – red
+    (0.85, 0.55, 0.20),   # little – dark orange (mirrors ring)
+    (1.00, 0.38, 0.38),   # thumb  – red
 ]
 BAR_W      = 80
 BAR_H_MAX  = 120
@@ -94,20 +96,32 @@ def _circle_2d(cx, cy, r, filled=True, segments=32):
 
 
 # ── Overlay widgets ───────────────────────────────────────────────────────────
-def draw_finger_bars(flex_degs: list, calib: dict):
-    total_w = 4 * BAR_W + 3 * BAR_GAP
+def draw_finger_bars(flex_degs: list, flex_volts: list, calib: dict):
+    n = len(FINGER_NAMES)
+    total_w = n * BAR_W + (n - 1) * BAR_GAP
     x0 = (W - total_w) // 2
     y0 = 20
 
-    for i, name in enumerate(FINGER_NAMES):
-        raw = flex_degs[i]
+    # voltage has 4 entries [index, middle, ring, thumb]; little borrows ring
+    _volt_idx = [0, 1, 2, 2, 3]
 
-        # Normalise against calibration if available
+    for i, name in enumerate(FINGER_NAMES):
+        raw  = flex_degs[i] if i < len(flex_degs) else 0.0
+        vi   = _volt_idx[i] if i < len(_volt_idx) else None
+        volt = flex_volts[vi] if (flex_volts and vi is not None and vi < len(flex_volts)) else None
+
+        # Normalise using per-finger voltage interval from calibration
         key = name.lower()
         if calib and key in calib:
-            c    = calib[key]
-            span = c["bent"] - c["flat"]
-            norm = (raw - c["flat"]) / span * 180.0 if span else raw
+            c = calib[key]
+            if "flat_v" in c and volt is not None:
+                span = c["bent_v"] - c["flat_v"]
+                norm = (volt - c["flat_v"]) / span * 180.0 if span else raw
+            elif "bent" in c and "flat" in c:
+                span = c["bent"] - c["flat"]
+                norm = (raw - c["flat"]) / span * 180.0 if span else raw
+            else:
+                norm = raw
         else:
             norm = raw
         norm = max(0.0, min(180.0, norm))
@@ -167,12 +181,13 @@ def draw_stats(reader, show_axes: bool):
               14, H - 46, color=(160, 160, 190), size=13)
 
     # Hints bottom-right
-    hints = ["R – reset orientation", "F – toggle axes", "ESC – quit"]
+    hints = ["R – reset orientation", "F – toggle axes",
+             "H – haptic test",       "ESC – quit"]
     for i, h in enumerate(hints):
         draw_text(h, W - 210, 20 + i * 18, color=(90, 90, 120), size=13)
 
     ax_label = "axes: ON " if show_axes else "axes: OFF"
-    draw_text(ax_label, W - 210, 74, color=(90, 90, 120), size=13)
+    draw_text(ax_label, W - 210, 92, color=(90, 90, 120), size=13)
 
 
 # ── 3-D scene ─────────────────────────────────────────────────────────────────
@@ -231,7 +246,7 @@ def render_frame(state: GloveState, ref_quat: list,
 
     # 2-D overlay — no depth test, no lighting
     _begin_2d()
-    draw_finger_bars(state.flex, calib)
+    draw_finger_bars(state.flex, state.voltage, calib)
     draw_button_indicator(state.button)
     draw_stats(reader, show_axes)
     _end_2d()
@@ -301,6 +316,9 @@ def main():
                     print("Orientation reference reset.")
                 elif event.key == K_f:
                     show_axes = not show_axes
+                elif event.key == K_h:
+                    reader.send_haptic(1)
+                    print("Haptic test: effect 1")
 
         fresh = reader.latest()
         if fresh:

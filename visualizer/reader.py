@@ -14,10 +14,11 @@ def list_ports():
 
 
 class GloveState:
-    __slots__ = ("flex", "quat", "button", "timestamp")
+    __slots__ = ("flex", "voltage", "quat", "button", "timestamp")
 
     def __init__(self):
-        self.flex      = [0.0, 0.0, 0.0, 0.0]  # degrees [index, middle, ring, pinky]
+        self.flex      = [0.0, 0.0, 0.0, 0.0, 0.0]  # degrees [index, middle, ring, little, thumb]
+        self.voltage   = [0.0, 0.0, 0.0, 0.0]        # raw ADC voltage (V) [index, middle, ring, thumb]
         self.quat      = [1.0, 0.0, 0.0, 0.0]  # [w, x, y, z]
         self.button    = False
         self.timestamp = 0
@@ -25,11 +26,12 @@ class GloveState:
 
 class SerialReader:
     def __init__(self, port: str, baud: int = 115200):
-        self._port    = port
-        self._baud    = baud
-        self._queue   = queue.Queue(maxsize=5)   # hold at most 5 unprocessed frames
-        self._running = False
-        self._thread  = None
+        self._port      = port
+        self._baud      = baud
+        self._queue     = queue.Queue(maxsize=5)   # hold at most 5 unprocessed frames
+        self._cmd_queue = queue.Queue(maxsize=8)   # outgoing commands (e.g. haptic)
+        self._running   = False
+        self._thread    = None
 
         self.connected  = False
         self.fps        = 0.0
@@ -44,6 +46,14 @@ class SerialReader:
 
     def stop(self):
         self._running = False
+
+    def send_haptic(self, effect: int):
+        """Queue a haptic effect (1–123). Fire-and-forget; dropped if not connected."""
+        if 1 <= effect <= 123:
+            try:
+                self._cmd_queue.put_nowait(f'H{effect}\n')
+            except queue.Full:
+                pass
 
     def latest(self) -> GloveState | None:
         """Drain the queue and return the newest frame, or None if nothing arrived."""
@@ -69,6 +79,14 @@ class SerialReader:
 
                     while self._running:
                         raw = ser.readline()
+
+                        # Flush any outgoing commands (haptic, etc.) after each read
+                        while True:
+                            try:
+                                ser.write(self._cmd_queue.get_nowait().encode())
+                            except queue.Empty:
+                                break
+
                         if not raw:
                             continue
 
@@ -88,10 +106,11 @@ class SerialReader:
                             self.latency_ms = (t_now - t_prev) * 1000
                         t_prev = t_now
 
-                        state          = GloveState()
-                        state.flex     = data.get("f", [0.0] * 4)
-                        state.quat     = data.get("q", [1.0, 0.0, 0.0, 0.0])
-                        state.button   = bool(data.get("b", 0))
+                        state           = GloveState()
+                        state.flex      = data.get("f", [0.0] * 5)
+                        state.voltage   = data.get("v", [0.0] * 4)
+                        state.quat      = data.get("q", [1.0, 0.0, 0.0, 0.0])
+                        state.button    = bool(data.get("b", 0))
                         state.timestamp = data.get("t", 0)
 
                         # Drop the oldest frame if the renderer hasn't caught up

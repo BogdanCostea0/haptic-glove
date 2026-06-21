@@ -8,14 +8,15 @@ _FINGER_COLORS = [
     (0.80, 0.62, 0.45),   # index
     (0.78, 0.60, 0.43),   # middle
     (0.76, 0.58, 0.41),   # ring
-    (0.74, 0.56, 0.39),   # pinky
+    (0.73, 0.55, 0.38),   # little (mirrors ring)
+    (0.74, 0.56, 0.39),   # thumb
 ]
 
 # ── Layout (all in world units, 1 unit ≈ "comfortable viewing size") ──────────
 # Palm: flat box in the XY plane, fingers extend upward (+Y), palm faces camera
-_PALM_W, _PALM_H, _PALM_D = 1.10, 0.80, 0.14
-_FINGER_X   = [-0.40, -0.13, 0.13, 0.40]   # X offset of each finger on the palm
-_FINGER_Y0  =  0.32                          # Y where fingers leave the palm top
+_PALM_W, _PALM_H, _PALM_D = 1.20, 0.80, 0.14
+_FINGER_X   = [-0.46, -0.23, 0.00, 0.23, 0.46]   # X offset: index, middle, ring, little, thumb
+_FINGER_Y0  =  0.32                                # Y where fingers leave the palm top
 
 # Phalanx lengths: [proximal, middle, distal]
 _SEG_LENS    = [0.46, 0.36, 0.26]
@@ -23,7 +24,7 @@ _SEG_LENS    = [0.46, 0.36, 0.26]
 _SEG_WEIGHTS = [0.50, 0.35, 0.15]
 _SEG_W, _SEG_D = 0.13, 0.11   # segment cross-section (width × depth)
 
-FINGER_NAMES = ["Index", "Middle", "Ring", "Pinky"]
+FINGER_NAMES = ["Index", "Middle", "Ring", "Little", "Thumb"]
 
 
 # ── Primitives ────────────────────────────────────────────────────────────────
@@ -74,7 +75,7 @@ def _draw_finger(flex_deg, color):
 # ── Public ────────────────────────────────────────────────────────────────────
 
 def draw_hand(flex_degs: list[float]):
-    """Draw palm + 4 fingers. Must be called inside the IMU-rotated matrix."""
+    """Draw palm + 5 fingers. flex_degs = [index, middle, ring, little, thumb]."""
     glColor3f(*_PALM_COLOR)
     _draw_box(_PALM_W, _PALM_H, _PALM_D)
 
